@@ -48,9 +48,10 @@ export default function AuthPage() {
   return (
     <main className="min-h-screen flex flex-col justify-center px-8 py-12">
       <div className="mb-12">
-        <span className="text-3xl font-headline font-bold text-secondary tracking-tight">
-          Organic Habits
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="material-symbols-outlined text-rose-700">self_care</span>
+          <span className="text-3xl headline-serif italic text-rose-800">Living Canvas</span>
+        </div>
         <h1 className="text-4xl font-headline font-bold text-on-surface leading-tight mt-4">
           {mode === 'signin' ? 'Welcome back.' : 'Start growing.'}
         </h1>

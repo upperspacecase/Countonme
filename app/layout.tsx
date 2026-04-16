@@ -19,8 +19,8 @@ const jakarta = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: 'Organic Habits',
-  description: 'Cultivate mindfulness. Track habits with your community.',
+  title: 'Living Canvas',
+  description: 'Did you do it today? Track habits with your community.',
   icons: { icon: '/favicon.svg' },
 };
 

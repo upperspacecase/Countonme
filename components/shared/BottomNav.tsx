@@ -4,15 +4,15 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 const tabs = [
-  { href: '/', icon: 'eco', label: 'Feed' },
-  { href: '/me', icon: 'person', label: 'Me' },
+  { href: '/', icon: 'auto_awesome', label: 'Feed' },
+  { href: '/me', icon: 'person', label: 'Profile' },
 ];
 
 export function BottomNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] z-50 flex justify-around items-center px-4 pb-8 pt-4 bg-surface/90 backdrop-blur-2xl rounded-t-[2.5rem] shadow-[0_-8px_30px_rgb(56,56,53,0.04)]">
+    <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] z-50 flex justify-around items-center px-8 pb-8 pt-4 bg-surface/80 backdrop-blur-2xl shadow-[0_-8px_30px_rgb(0,0,0,0.04)] rounded-t-[3rem]">
       {tabs.map((tab) => {
         const active = pathname === tab.href;
         return (
@@ -21,17 +21,17 @@ export function BottomNav() {
             href={tab.href}
             className={
               active
-                ? 'flex flex-col items-center justify-center bg-secondary text-white rounded-[30%_70%_70%_30%_/_30%_30%_70%_70%] px-8 py-2.5 scale-110 transition-all duration-500 ease-out shadow-lg shadow-secondary/20'
-                : 'flex flex-col items-center justify-center text-on-surface/50 px-8 py-2.5 hover:text-secondary transition-colors'
+                ? 'flex flex-col items-center justify-center bg-teal-100/50 text-teal-800 rounded-full px-6 py-2 transition-all duration-500 ease-out active:scale-90 hover:scale-110'
+                : 'flex flex-col items-center justify-center text-stone-400 px-6 py-2 transition-all duration-200 hover:scale-110 active:scale-90'
             }
           >
             <span
-              className="material-symbols-outlined"
+              className="material-symbols-outlined mb-0.5"
               style={active ? { fontVariationSettings: "'FILL' 1" } : undefined}
             >
               {tab.icon}
             </span>
-            <span className="font-sans text-[11px] font-semibold tracking-wide uppercase mt-1">
+            <span className="font-body font-semibold tracking-tight text-[11px]">
               {tab.label}
             </span>
           </Link>
