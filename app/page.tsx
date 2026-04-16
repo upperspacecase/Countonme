@@ -1,154 +1,85 @@
-import Link from 'next/link';
-
-const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-const STATUSES = ['done', 'done', 'done', 'done', 'done', 'missed', 'empty'] as const;
-
-const FRIENDS = [
-  { name: 'Alex P.', streak: 12, color: '#2D6A4F' },
-  { name: 'Jordan', streak: 7, color: '#E07A5F' },
-  { name: 'Sam K.', streak: 3, color: '#5A7FBF' },
-  { name: 'Riley', streak: 0, color: '#B07BAC' },
-];
-
-const CheckSVG = () => (
-  <svg width="14" height="14" viewBox="0 0 20 20" fill="none" aria-hidden>
-    <path d="M5 10.5l3 3 7-7" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
-  </svg>
-);
-
-const CrossSVG = () => (
-  <svg width="14" height="14" viewBox="0 0 20 20" fill="none" aria-hidden>
-    <path d="M6 6l8 8M14 6l-8 8" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
-  </svg>
-);
+import { TopNav } from '@/components/shared/TopNav';
+import { BottomNav } from '@/components/shared/BottomNav';
 
 export default function Home() {
   return (
-    <div className="landing">
-      <nav className="landing-nav">
-        <span className="landing-logo">Count on Me</span>
-        <div className="landing-nav-links">
-          <Link href="/how-it-works">How It Works</Link>
-          <Link href="/faq">FAQ</Link>
-          <Link href="/tracker">Tracker</Link>
-        </div>
-      </nav>
+    <>
+      <TopNav leftIcon="close" leftHref="/" />
+      <main className="flex-1 pt-24 pb-32 px-6">
+        {/* Header */}
+        <header className="mb-12 relative">
+          <div className="absolute -top-12 -right-8 w-48 h-48 bg-secondary-container/20 organic-blob-1 -z-10 blur-2xl" />
+          <h1 className="text-5xl font-bold leading-tight mb-4 text-on-surface">
+            Did you show up today?
+          </h1>
+          <p className="text-on-surface-variant font-body text-lg">
+            Every small step is a seed planted for tomorrow&rsquo;s growth.
+          </p>
+        </header>
 
-      <section className="hero">
-        <div className="hero-badge">Free accountability tracker</div>
-        <h1 className="hero-title">One question.<br />Every day.</h1>
-        <p className="hero-sub">
-          Track one habit with a daily yes or no. Share your streak with friends. Send a nudge when they slip.
-        </p>
-        <div className="hero-actions">
-          <Link href="/tracker" className="btn-primary">
-            Start tracking
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden>
-              <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          </Link>
-          <Link href="/demo" className="btn-secondary">Watch the demo</Link>
-        </div>
-      </section>
+        {/* Response Shapes */}
+        <section className="grid grid-cols-2 gap-6 mb-16 items-end">
+          <button className="group flex flex-col items-center justify-center gap-4 transition-all duration-300 transform active:scale-95">
+            <div className="w-full aspect-[4/5] bg-secondary organic-blob-2 flex items-center justify-center shadow-lg group-hover:bg-secondary-dim transition-colors">
+              <span className="material-symbols-outlined text-white text-5xl" style={{ fontVariationSettings: "'FILL' 1" }}>
+                spa
+              </span>
+            </div>
+            <span className="font-label font-semibold text-lg tracking-wider text-secondary">YES</span>
+          </button>
 
-      <section className="how-section">
-        <div className="section-label">How it works</div>
-        <div className="steps">
-          <div className="step">
-            <div className="step-number">1</div>
-            <div>
-              <h3>Pick one habit</h3>
-              <p>Workout, read, meditate, ship code. Choose one thing you want to do every day.</p>
+          <button className="group flex flex-col items-center justify-center gap-4 transition-all duration-300 transform active:scale-95">
+            <div className="w-full aspect-square bg-surface-container organic-blob-1 flex items-center justify-center group-hover:bg-surface-container-highest transition-colors">
+              <span className="material-symbols-outlined text-outline text-5xl">
+                motion_photos_off
+              </span>
             </div>
-          </div>
-          <div className="step">
-            <div className="step-number">2</div>
-            <div>
-              <h3>Answer once a day</h3>
-              <p>Did you do it? Yes or no. Takes two seconds. Build your streak.</p>
-            </div>
-          </div>
-          <div className="step">
-            <div className="step-number">3</div>
-            <div>
-              <h3>Add your people</h3>
-              <p>Invite up to 5 friends. See each other's weekly check-ins and streaks.</p>
-            </div>
-          </div>
-          <div className="step">
-            <div className="step-number">4</div>
-            <div>
-              <h3>Nudge and celebrate</h3>
-              <p>Send a nudge when someone slips. Celebrate when they hit a milestone.</p>
-            </div>
-          </div>
-        </div>
-      </section>
+            <span className="font-label font-semibold text-lg tracking-wider text-outline">NO</span>
+          </button>
+        </section>
 
-      <section className="preview-section">
-        <div className="section-label">What it looks like</div>
-        <div className="preview-card">
-          <div className="preview-header">
-            <h3 className="serif">Did you work out?</h3>
-            <div className="preview-streak">
-              <span className="num">5</span>
-              <span className="label">day streak</span>
+        {/* Gratitude Section */}
+        <section className="relative">
+          <div className="bg-surface-container-low rounded-xl p-8 pt-10">
+            <div className="absolute -top-4 left-8 bg-tertiary-fixed text-on-tertiary-fixed px-6 py-2 organic-blob-2 font-headline italic text-lg shadow-sm">
+              Gratitude Journal
             </div>
-          </div>
-          <div className="preview-week">
-            {DAYS.map((day, i) => (
-              <div className="preview-day" key={day}>
-                <div className="wd">{day}</div>
-                <div className={`indicator ${STATUSES[i]}`}>
-                  {STATUSES[i] === 'done' && <CheckSVG />}
-                  {STATUSES[i] === 'missed' && <CrossSVG />}
-                </div>
+            <h3 className="text-2xl font-bold mb-6 text-on-surface pt-4">
+              What are you grateful for?
+            </h3>
+            <div className="relative">
+              <textarea
+                className="w-full bg-transparent border-none p-0 focus:ring-0 text-xl font-body text-on-surface placeholder:text-outline-variant min-h-[160px] resize-none"
+                placeholder="Today, I am thankful for..."
+              />
+              <div className="h-1 w-full bg-surface-variant rounded-full mt-2">
+                <div className="h-full w-1/3 bg-secondary rounded-full" />
               </div>
-            ))}
-          </div>
-          <div className="preview-friends">
-            {FRIENDS.map((f) => (
-              <div className="preview-friend" key={f.name}>
-                <div className="preview-avatar" style={{ background: f.color }}>
-                  {f.name[0]}
-                </div>
-                <div className="preview-friend-info">
-                  <div className="name">{f.name}</div>
-                  <div className="streak-text">{f.streak > 0 ? `${f.streak}-day streak` : 'No streak'}</div>
-                </div>
+            </div>
+            <div className="mt-8 flex justify-between items-center">
+              <div className="flex -space-x-2">
+                <div className="w-8 h-8 rounded-full bg-primary-container organic-blob-1 border-2 border-surface" />
+                <div className="w-8 h-8 rounded-full bg-secondary-container organic-blob-2 border-2 border-surface" />
+                <div className="w-8 h-8 rounded-full bg-tertiary-container organic-blob-1 border-2 border-surface" />
               </div>
-            ))}
+              <button className="bg-on-surface text-surface px-8 py-3 rounded-full font-label font-bold text-sm tracking-widest uppercase hover:opacity-90 transition-opacity">
+                SAVE ENTRY
+              </button>
+            </div>
           </div>
-        </div>
-      </section>
 
-      <section className="tagline-section">
-        <blockquote>
-          &ldquo;The thing that keeps me going isn&rsquo;t discipline. It&rsquo;s knowing someone will notice if I stop.&rdquo;
-        </blockquote>
-        <cite>The idea behind Count on Me</cite>
-      </section>
-
-      <section className="bottom-cta">
-        <h2 className="serif">Start today. It takes 10 seconds.</h2>
-        <p>No account required. Your data stays in your browser.</p>
-        <Link href="/tracker" className="btn-primary">
-          Open the tracker
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden>
-            <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-        </Link>
-      </section>
-
-      <footer className="site-footer">
-        <span className="footer-logo">Count on Me</span>
-        <div className="footer-links">
-          <Link href="/how-it-works">How It Works</Link>
-          <Link href="/faq">FAQ</Link>
-          <Link href="/support">Support</Link>
-          <Link href="/privacy">Privacy</Link>
-        </div>
-      </footer>
-    </div>
+          {/* Decorative Quote */}
+          <div className="mt-12 flex items-center gap-6 overflow-hidden">
+            <div className="flex-shrink-0 w-32 h-40 bg-surface-container-highest rounded-lg overflow-hidden rotate-[-4deg] shadow-sm">
+              <div className="w-full h-full bg-gradient-to-br from-secondary/20 to-tertiary-fixed/30" />
+            </div>
+            <div className="flex-1 italic text-on-surface-variant font-headline text-lg">
+              &ldquo;Small deeds done are better than great deeds planned.&rdquo;
+            </div>
+          </div>
+        </section>
+      </main>
+      <BottomNav />
+    </>
   );
 }
