@@ -4,9 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 const tabs = [
-  { href: '/', icon: 'eco', label: 'Habits' },
-  { href: '/feed', icon: 'auto_awesome_motion', label: 'Feed' },
-  { href: '/circles', icon: 'group', label: 'Circles' },
+  { href: '/', icon: 'eco', label: 'Feed' },
   { href: '/me', icon: 'person', label: 'Me' },
 ];
 
@@ -23,8 +21,8 @@ export function BottomNav() {
             href={tab.href}
             className={
               active
-                ? 'flex flex-col items-center justify-center bg-secondary text-white rounded-[30%_70%_70%_30%_/_30%_30%_70%_70%] px-5 py-2 scale-110 transition-all duration-500 ease-out shadow-lg shadow-[#2593A1]/20'
-                : 'flex flex-col items-center justify-center text-on-surface/50 px-4 py-2 hover:text-secondary transition-colors'
+                ? 'flex flex-col items-center justify-center bg-secondary text-white rounded-[30%_70%_70%_30%_/_30%_30%_70%_70%] px-8 py-2.5 scale-110 transition-all duration-500 ease-out shadow-lg shadow-secondary/20'
+                : 'flex flex-col items-center justify-center text-on-surface/50 px-8 py-2.5 hover:text-secondary transition-colors'
             }
           >
             <span

@@ -5,13 +5,15 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { TopNav } from '@/components/shared/TopNav';
 import { BottomNav } from '@/components/shared/BottomNav';
-import { getUserProfile, getRecentGratitude, type UserProfile } from '@/lib/firestore';
+import { getUserProfile, updateUserProfile, getRecentGratitude, type UserProfile } from '@/lib/firestore';
 
 export default function Me() {
   const { user, loading, signOut } = useAuth();
   const router = useRouter();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [gratitude, setGratitude] = useState<any[]>([]);
+  const [editingHabit, setEditingHabit] = useState(false);
+  const [habitDraft, setHabitDraft] = useState('');
 
   useEffect(() => {
     if (!loading && !user) router.push('/auth');
@@ -22,11 +24,19 @@ export default function Me() {
     const load = async () => {
       const p = await getUserProfile(user.uid);
       setProfile(p);
-      const g = await getRecentGratitude(user.uid, 5);
+      if (p?.habit) setHabitDraft(p.habit);
+      const g = await getRecentGratitude(user.uid, 7);
       setGratitude(g);
     };
     load();
   }, [user]);
+
+  const saveHabit = async () => {
+    if (!user || !habitDraft.trim()) return;
+    await updateUserProfile(user.uid, { habit: habitDraft.trim() });
+    setProfile((p) => p ? { ...p, habit: habitDraft.trim() } : p);
+    setEditingHabit(false);
+  };
 
   const handleSignOut = async () => {
     await signOut();
@@ -42,72 +52,77 @@ export default function Me() {
   }
 
   const displayName = profile?.displayName || user.displayName || 'You';
+  const initial = displayName[0].toUpperCase();
   const memberSince = profile?.createdAt
     ? new Date(profile.createdAt.seconds * 1000).toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
     : 'Recently';
 
   return (
     <>
-      <TopNav leftIcon="search" leftHref="/" />
+      <TopNav leftIcon="arrow_back" leftHref="/" />
       <main className="pt-24 px-6 pb-8">
-        {/* Hero */}
-        <section className="mb-12 relative">
-          <div className="absolute -top-10 -right-10 w-48 h-48 bg-secondary-container/20 rounded-full blur-3xl -z-10" />
-          <h1 className="text-4xl font-headline font-bold text-on-surface leading-tight mb-2">
-            {displayName}&rsquo;s Growth
-          </h1>
-          <p className="text-on-surface-variant font-body">Member since {memberSince}</p>
-
-          {/* Active Focus */}
-          <div className="mt-8 relative overflow-hidden bg-secondary text-white p-8 rounded-xl rounded-tr-[5rem] rounded-bl-[4rem]">
-            <div className="relative z-10">
-              <span className="text-xs font-label uppercase tracking-widest opacity-80">Active Focus</span>
-              <h2 className="text-2xl font-headline font-bold mt-1 mb-4">
-                {profile?.habit || 'Set your daily habit'}
-              </h2>
-              <div className="flex items-center gap-3">
-                <div className="h-1.5 flex-1 bg-white/20 rounded-full overflow-hidden">
-                  <div className="h-full bg-white rounded-full" style={{ width: `${Math.min(100, (profile?.streak || 0) * 4)}%` }} />
-                </div>
-                <span className="text-sm font-label font-bold">{profile?.streak || 0} days</span>
-              </div>
-            </div>
-            <div className="absolute -bottom-4 -right-4 w-24 h-24 bg-white/10 rounded-full blur-xl" />
+        {/* Profile Header */}
+        <section className="mb-10 text-center">
+          <div className="w-20 h-20 rounded-full bg-secondary flex items-center justify-center text-white text-2xl font-bold mx-auto mb-4">
+            {initial}
           </div>
+          <h1 className="text-3xl font-headline font-bold text-on-surface">{displayName}</h1>
+          <p className="text-on-surface-variant font-body text-sm mt-1">Member since {memberSince}</p>
         </section>
 
         {/* Stats */}
-        <section className="grid grid-cols-2 gap-4 mb-12">
-          <div className="bg-surface-container-low p-6 rounded-lg border-b-4 border-primary/20">
-            <div className="flex items-center justify-between mb-2">
-              <span className="material-symbols-outlined text-primary">local_fire_department</span>
-              <span className="text-[10px] font-label font-bold uppercase text-primary/60">Current</span>
-            </div>
-            <div className="text-3xl font-headline font-bold text-on-surface">
-              {profile?.streak || 0} <span className="text-sm font-body font-normal text-on-surface-variant">days</span>
-            </div>
-            <p className="text-[11px] font-body mt-1">Best: {profile?.bestStreak || 0} days</p>
+        <section className="grid grid-cols-3 gap-3 mb-10">
+          <div className="bg-surface-container-low p-4 rounded-lg text-center">
+            <div className="text-2xl font-headline font-bold text-on-surface">{profile?.streak || 0}</div>
+            <p className="text-[10px] font-label font-bold uppercase text-on-surface-variant tracking-wider mt-1">Streak</p>
           </div>
-          <div className="bg-surface-container-low p-6 rounded-lg border-b-4 border-tertiary/20">
-            <div className="flex items-center justify-between mb-2">
-              <span className="material-symbols-outlined text-tertiary">eco</span>
-              <span className="text-[10px] font-label font-bold uppercase text-tertiary/60">Points</span>
-            </div>
-            <div className="text-3xl font-headline font-bold text-on-surface">
-              {(profile?.points || 0).toLocaleString()}
-            </div>
-            <p className="text-[11px] font-body mt-1">+10 per check-in</p>
+          <div className="bg-surface-container-low p-4 rounded-lg text-center">
+            <div className="text-2xl font-headline font-bold text-on-surface">{profile?.bestStreak || 0}</div>
+            <p className="text-[10px] font-label font-bold uppercase text-on-surface-variant tracking-wider mt-1">Best</p>
           </div>
+          <div className="bg-surface-container-low p-4 rounded-lg text-center">
+            <div className="text-2xl font-headline font-bold text-on-surface">{(profile?.points || 0).toLocaleString()}</div>
+            <p className="text-[10px] font-label font-bold uppercase text-on-surface-variant tracking-wider mt-1">Points</p>
+          </div>
+        </section>
+
+        {/* Habit Setting */}
+        <section className="mb-10">
+          <h3 className="text-xs font-label font-bold uppercase tracking-widest text-on-surface-variant mb-3">Your daily habit</h3>
+          {editingHabit ? (
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={habitDraft}
+                onChange={(e) => setHabitDraft(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && saveHabit()}
+                className="flex-1 bg-surface-container-low border border-outline-variant rounded-lg px-4 py-3 font-body text-on-surface placeholder:text-outline focus:outline-none focus:border-secondary"
+                placeholder="e.g. Work out, Read, Meditate"
+                autoFocus
+              />
+              <button onClick={saveHabit} className="bg-secondary text-white px-4 rounded-lg font-label font-bold text-sm">
+                Save
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setEditingHabit(true)}
+              className="w-full text-left bg-surface-container-low p-4 rounded-lg flex justify-between items-center group hover:bg-surface-container transition-colors"
+            >
+              <span className="font-body text-on-surface">{profile?.habit || 'Tap to set your habit'}</span>
+              <span className="material-symbols-outlined text-on-surface-variant group-hover:text-secondary transition-colors">edit</span>
+            </button>
+          )}
         </section>
 
         {/* Recent Gratitude */}
         {gratitude.length > 0 && (
-          <section className="mb-12">
-            <h3 className="font-headline text-xl font-bold mb-4">Recent Gratitude</h3>
-            <div className="space-y-3">
+          <section className="mb-10">
+            <h3 className="text-xs font-label font-bold uppercase tracking-widest text-on-surface-variant mb-3">Recent gratitude</h3>
+            <div className="space-y-2">
               {gratitude.map((g) => (
                 <div key={g.id} className="bg-surface-container-low p-4 rounded-lg">
-                  <p className="text-sm font-body text-on-surface">{g.text}</p>
+                  <p className="text-sm font-body text-on-surface italic">&ldquo;{g.text}&rdquo;</p>
                   <p className="text-[10px] font-body text-on-surface-variant mt-2 uppercase tracking-wider">{g.id}</p>
                 </div>
               ))}
@@ -116,14 +131,12 @@ export default function Me() {
         )}
 
         {/* Sign Out */}
-        <section className="mb-8">
-          <button
-            onClick={handleSignOut}
-            className="w-full py-3 text-center text-sm font-body font-semibold text-primary border border-primary/20 rounded-xl hover:bg-primary/5 transition-colors"
-          >
-            Sign Out
-          </button>
-        </section>
+        <button
+          onClick={handleSignOut}
+          className="w-full py-3 text-center text-sm font-body font-semibold text-primary border border-primary/20 rounded-xl hover:bg-primary/5 transition-colors"
+        >
+          Sign Out
+        </button>
       </main>
       <BottomNav />
     </>

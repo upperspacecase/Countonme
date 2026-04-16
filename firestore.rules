@@ -3,30 +3,22 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Users can read/write their own profile
+    // Users: any authed user can read profiles, only owner can write
     match /users/{userId} {
       allow read: if request.auth != null;
       allow write: if request.auth != null && request.auth.uid == userId;
     }
 
-    // Check-ins: user can read/write their own, friends can read
+    // Check-ins: any authed user can read (for the feed), only owner can write
     match /users/{userId}/checkins/{date} {
       allow read: if request.auth != null;
       allow write: if request.auth != null && request.auth.uid == userId;
     }
 
-    // Circles: members can read, creator can write
-    match /circles/{circleId} {
-      allow read: if request.auth != null
-        && request.auth.uid in resource.data.members;
-      allow create: if request.auth != null;
-      allow update, delete: if request.auth != null
-        && request.auth.uid in resource.data.members;
-    }
-
-    // Gratitude entries: private to user
+    // Gratitude: any authed user can read (for card flip), only owner can write
     match /users/{userId}/gratitude/{entryId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == userId;
     }
   }
 }

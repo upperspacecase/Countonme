@@ -93,3 +93,49 @@ export async function getRecentGratitude(uid: string, count = 7) {
   const snap = await getDocs(q);
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 }
+
+export async function getTodayGratitude(uid: string) {
+  const today = toDateKey(new Date());
+  const snap = await getDoc(doc(db, 'users', uid, 'gratitude', today));
+  return snap.exists() ? (snap.data() as { text: string }) : null;
+}
+
+// --------------- Feed ---------------
+
+export type FeedItem = {
+  uid: string;
+  displayName: string;
+  habit: string;
+  answer: 'yes' | 'no';
+  streak: number;
+  gratitude?: string;
+};
+
+export async function getTodayFeed(): Promise<FeedItem[]> {
+  const today = toDateKey(new Date());
+  const usersSnap = await getDocs(collection(db, 'users'));
+  const items: FeedItem[] = [];
+
+  await Promise.all(
+    usersSnap.docs.map(async (userDoc) => {
+      const profile = userDoc.data() as UserProfile;
+      const checkinSnap = await getDoc(doc(db, 'users', userDoc.id, 'checkins', today));
+      if (!checkinSnap.exists()) return;
+
+      const checkin = checkinSnap.data() as { answer: 'yes' | 'no' };
+      const gratSnap = await getDoc(doc(db, 'users', userDoc.id, 'gratitude', today));
+      const gratitude = gratSnap.exists() ? (gratSnap.data() as { text: string }).text : undefined;
+
+      items.push({
+        uid: userDoc.id,
+        displayName: profile.displayName || 'Someone',
+        habit: profile.habit || 'Showed up today',
+        answer: checkin.answer,
+        streak: profile.streak || 0,
+        gratitude,
+      });
+    })
+  );
+
+  return items;
+}
