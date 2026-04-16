@@ -1,0 +1,10 @@
+node_modules/
+npm-debug.log
+yarn-error.log
+.DS_Store
+
+# Remotion render output (commit the mp4 if you want to ship the baked demo)
+public/demo.mp4
+public/demo.gif
+.remotion/
+out/

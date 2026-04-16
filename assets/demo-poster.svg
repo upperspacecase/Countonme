@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">
+  <rect width="1280" height="720" fill="#F4ECD8"/>
+  <text x="640" y="310" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="22" font-weight="700" letter-spacing="6" fill="#1b1b1b">SIMPLY ACCOUNTABLE.</text>
+  <text x="640" y="410" text-anchor="middle" font-family="Georgia, serif" font-size="88" font-weight="700" fill="#1b1b1b">One Question. Every Day.</text>
+  <text x="640" y="460" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="22" fill="#3a3a3a">Did you do it? Let your friends know.</text>
+  <circle cx="640" cy="560" r="42" fill="#A9C7CB" stroke="#1b1b1b" stroke-width="2.5"/>
+  <path d="M625 540 l26 18 l-26 18 z" fill="#1b1b1b"/>
+</svg>

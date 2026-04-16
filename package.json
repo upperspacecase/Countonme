@@ -1,0 +1,22 @@
+{
+  "name": "simply-accountable-demo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Remotion-rendered promo demo for the Simply Accountable landing page.",
+  "scripts": {
+    "preview": "remotion studio src/index.ts",
+    "render": "remotion render src/index.ts SimplyAccountableDemo public/demo.mp4",
+    "render:gif": "remotion render src/index.ts SimplyAccountableDemo public/demo.gif --codec=gif"
+  },
+  "dependencies": {
+    "@remotion/cli": "^4.0.200",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "remotion": "^4.0.200"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "typescript": "^5.4.5"
+  }
+}

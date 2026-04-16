@@ -1,0 +1,18 @@
+export const theme = {
+  bg: '#F4ECD8',
+  ink: '#1b1b1b',
+  inkSoft: '#3a3a3a',
+  muted: '#6b6b6b',
+  rule: '#b9ae92',
+  accent: '#A9C7CB',
+  accentInk: '#123b42',
+  yes: '#B6DDA8',
+  yesInk: '#1c3b2e',
+  no: '#F1BFB8',
+  noInk: '#7a2f2a',
+  nudge: '#D7D2CC',
+  celebrate: '#D9E8B8',
+  paper: '#ffffff',
+  serif: "'Playfair Display', Georgia, 'Times New Roman', serif",
+  sans: "'Helvetica Neue', Helvetica, Arial, sans-serif",
+};

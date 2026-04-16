@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>My Tracker — Simply Accountable</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&display=swap" />
+<link rel="stylesheet" href="styles.css" />
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
+</head>
+<body class="app">
+  <div class="app-shell">
+    <div class="app-card">
+      <div class="app-top">
+        <a href="index.html">&larr; HOME</a>
+        <span class="brand-mark" style="font-size:12px">SIMPLY ACCOUNTABLE.</span>
+      </div>
+
+      <p class="app-date" id="todayDate"></p>
+      <h1 class="app-question" id="habitQuestion">Did you do it today?</h1>
+
+      <div class="answer-row" role="group" aria-label="Today's answer">
+        <button class="answer yes" data-answer="yes" type="button">YES</button>
+        <button class="answer no" data-answer="no" type="button">NO</button>
+      </div>
+
+      <div class="habit-edit">
+        <input id="habitInput" type="text" maxlength="64" placeholder="Your habit (e.g. Workout, Read 10 pages)" aria-label="Habit" />
+        <button class="btn-ghost" id="saveHabit" type="button">SAVE HABIT</button>
+      </div>
+
+      <h2 class="app-section-title">THIS WEEK</h2>
+      <div class="week-grid" id="weekGrid" aria-label="This week's check-ins"></div>
+
+      <h2 class="app-section-title">STATS</h2>
+      <div class="stats">
+        <div class="stat"><div class="label">CURRENT STREAK</div><div class="value" id="streakValue">0</div></div>
+        <div class="stat"><div class="label">BEST STREAK</div><div class="value" id="bestValue">0</div></div>
+        <div class="stat"><div class="label">TOTAL YES</div><div class="value" id="totalYes">0</div></div>
+      </div>
+
+      <h2 class="app-section-title">FRIENDS</h2>
+      <div class="friends" id="friendsGrid"></div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="app.js" defer></script>
+</body>
+</html>
