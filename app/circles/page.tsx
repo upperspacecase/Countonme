@@ -1,10 +1,33 @@
+'use client';
+
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/lib/auth-context';
 import { TopNav } from '@/components/shared/TopNav';
 import { BottomNav } from '@/components/shared/BottomNav';
-import type { Metadata } from 'next';
 
-export const metadata: Metadata = { title: 'Circles — Organic Habits' };
+const CIRCLES = [
+  { name: 'Morning Risers', members: 8, color: 'bg-secondary-container', textColor: 'text-on-secondary-container' },
+  { name: 'Mindful Readers', members: 5, color: 'bg-tertiary-container', textColor: 'text-on-tertiary-container' },
+  { name: 'Daily Movers', members: 12, color: 'bg-primary-container', textColor: 'text-on-primary-container' },
+];
 
 export default function Circles() {
+  const { user, loading } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!loading && !user) router.push('/auth');
+  }, [user, loading, router]);
+
+  if (loading || !user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <span className="text-outline font-body">Loading...</span>
+      </div>
+    );
+  }
+
   return (
     <>
       <TopNav leftIcon="menu" leftHref="/" />
@@ -17,11 +40,7 @@ export default function Circles() {
         </p>
 
         <div className="space-y-4">
-          {[
-            { name: 'Morning Risers', members: 8, color: 'bg-secondary-container', textColor: 'text-on-secondary-container' },
-            { name: 'Mindful Readers', members: 5, color: 'bg-tertiary-container', textColor: 'text-on-tertiary-container' },
-            { name: 'Daily Movers', members: 12, color: 'bg-primary-container', textColor: 'text-on-primary-container' },
-          ].map((circle) => (
+          {CIRCLES.map((circle) => (
             <div
               key={circle.name}
               className={`${circle.color} ${circle.textColor} organic-blob-2 p-8 min-h-[140px] flex flex-col justify-between shadow-sm`}

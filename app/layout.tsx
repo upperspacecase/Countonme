@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { Newsreader, Plus_Jakarta_Sans } from 'next/font/google';
+import { AuthProvider } from '@/lib/auth-context';
 import './globals.css';
 
 const newsreader = Newsreader({
@@ -33,9 +34,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body className="min-h-screen pb-32 overflow-x-hidden bg-surface">
-        <div className="max-w-[430px] mx-auto relative min-h-screen bg-surface shadow-[0_0_80px_rgba(0,0,0,0.06)]">
-          {children}
-        </div>
+        <AuthProvider>
+          <div className="max-w-[430px] mx-auto relative min-h-screen bg-surface shadow-[0_0_80px_rgba(0,0,0,0.06)]">
+            {children}
+          </div>
+        </AuthProvider>
       </body>
     </html>
   );
