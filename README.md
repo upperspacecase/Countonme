@@ -2,52 +2,45 @@
 
 > One Question. Every Day. A shared accountability tracker — did you do it today? Share with friends. Send encouragement.
 
-## What&rsquo;s in here
+## Stack
 
-- **Landing page** — `index.html` + `styles.css` + `landing.js`
-- **Interactive web tracker** — `app.html` + `app.js` (persists to `localStorage`)
-- **Remotion demo** — a 30-second animated product walkthrough rendered with [Remotion](https://remotion.dev)
-- **Static content pages** — `how-it-works.html`, `faq.html`, `support.html`, `privacy.html`
-- **Demo embed page** — `demo.html` (plays the rendered `public/demo.mp4`)
+- **Next.js 14** (App Router) — deploys to Vercel out of the box
+- **Remotion** — 30-second animated product demo, played live in-browser via `@remotion/player`
+- **TypeScript** + **React 18**
 
-## Remotion demo
+## Pages
 
-The marketing demo is a React-based composition under `src/`.
+| Route            | Description                                         |
+| ---------------- | --------------------------------------------------- |
+| `/`              | Landing page                                        |
+| `/demo`          | Remotion-powered animated product walkthrough       |
+| `/tracker`       | Interactive accountability tracker (localStorage)   |
+| `/how-it-works`  | How it works                                        |
+| `/faq`           | FAQ                                                 |
+| `/support`       | Support contact                                     |
+| `/privacy`       | Privacy policy                                      |
+
+## Getting started
 
 ```sh
 npm install
-
-# Live preview in the Remotion Studio
-npm run preview
-
-# Render a 30s MP4 into public/demo.mp4 (embedded on demo.html)
-npm run render
-
-# Or render a GIF
-npm run render:gif
+npm run dev       # starts Next.js dev server at http://localhost:3000
 ```
 
-Scenes, in order:
+## Remotion demo
 
-1. `src/scenes/Intro.tsx` — brand + "One Question. Every Day."
-2. `src/scenes/CheckIn.tsx` — phone mock, tap YES, check-mark animates in
-3. `src/scenes/Week.tsx` — week grid fills one dot at a time, streak counter ticks to 5
-4. `src/scenes/Friends.tsx` — 4 friend avatars pop in, network lines draw
-5. `src/scenes/Encourage.tsx` — "Nudge" button presses, message bubble flies, confetti
-6. `src/scenes/Outro.tsx` — brand mark + "Get started for free."
-
-Durations are configured in `src/Demo.tsx` (`SCENE`). Style tokens live in `src/theme.ts`.
-
-The rendered `public/demo.mp4` is gitignored by default — bake it locally before deploying, or remove the ignore line if you want to commit it.
-
-## Static site
-
-No build step. Open `index.html` in a browser, or serve the folder:
+The demo page (`/demo`) plays the Remotion composition directly in the browser — no pre-rendering needed. If you want to export a standalone mp4:
 
 ```sh
-python3 -m http.server 8000
-# then visit http://localhost:8000
+npm run remotion:preview   # Remotion Studio
+npm run remotion:render    # renders public/demo.mp4
 ```
+
+Scenes live under `remotion/scenes/`. Style tokens are in `remotion/theme.ts`.
+
+## Deploy
+
+Push to Vercel. It auto-detects Next.js — no extra config needed.
 
 ## Branch
 

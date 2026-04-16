@@ -1,20 +1,26 @@
 {
-  "name": "simply-accountable-demo",
+  "name": "simply-accountable",
   "version": "1.0.0",
   "private": true,
-  "description": "Remotion-rendered promo demo for the Simply Accountable landing page.",
+  "description": "Simply Accountable — landing, tracker and Remotion demo, on Next.js.",
   "scripts": {
-    "preview": "remotion studio src/index.ts",
-    "render": "remotion render src/index.ts SimplyAccountableDemo public/demo.mp4",
-    "render:gif": "remotion render src/index.ts SimplyAccountableDemo public/demo.gif --codec=gif"
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "remotion:preview": "remotion studio remotion/index.ts",
+    "remotion:render": "remotion render remotion/index.ts SimplyAccountableDemo public/demo.mp4"
   },
   "dependencies": {
     "@remotion/cli": "^4.0.200",
+    "@remotion/player": "^4.0.200",
+    "next": "^14.2.15",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "remotion": "^4.0.200"
   },
   "devDependencies": {
+    "@types/node": "^20.12.12",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
     "typescript": "^5.4.5"
