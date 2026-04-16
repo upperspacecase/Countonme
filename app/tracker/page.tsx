@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { Tracker } from '@/components/tracker/Tracker';
 
 export const metadata: Metadata = {
-  title: 'My Tracker — Simply Accountable',
+  title: 'Tracker — Count on Me',
 };
 
 export default function TrackerPage() {

@@ -11,18 +11,16 @@ const serif = Playfair_Display({
 
 const sans = Inter({
   subsets: ['latin'],
-  weight: ['400', '600', '700', '800'],
+  weight: ['400', '500', '600', '700'],
   variable: '--font-sans',
   display: 'swap',
 });
 
 export const metadata: Metadata = {
-  title: 'Simply Accountable — One Question. Every Day.',
+  title: 'Count on Me — One Question. Every Day.',
   description:
-    'Simply Accountable is a shared accountability tracker. One daily yes/no question. Build streaks with friends. Send encouragement.',
-  icons: {
-    icon: '/favicon.svg',
-  },
+    'Track one habit with a daily yes or no. Share your streak with friends. Send a nudge when they slip.',
+  icons: { icon: '/favicon.svg' },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

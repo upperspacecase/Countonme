@@ -8,7 +8,7 @@ type State = { habit: string; answers: Record<string, Answer> };
 
 const STORAGE_KEY = 'simply-accountable-v1';
 const DEFAULT_HABIT = 'Did you do it today?';
-const WEEKDAYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 const pad = (n: number) => String(n).padStart(2, '0');
 const toKey = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
@@ -25,27 +25,20 @@ const addDays = (d: Date, n: number) => {
 };
 
 const FRIENDS = [
-  { name: 'Alex P.', streak: 5, color: '#F4B6A0' },
-  { name: 'Jordan', streak: 12, color: '#F0D28A' },
-  { name: 'Sam', streak: 3, color: '#B7C8F2' },
-  { name: 'Riley', streak: 0, color: '#B4DDB0' },
+  { name: 'Alex P.', streak: 5, color: '#2D6A4F', initial: 'A' },
+  { name: 'Jordan', streak: 12, color: '#E07A5F', initial: 'J' },
+  { name: 'Sam', streak: 3, color: '#5A7FBF', initial: 'S' },
+  { name: 'Riley', streak: 0, color: '#B07BAC', initial: 'R' },
 ];
 
 const Check = () => (
   <svg viewBox="0 0 20 20" aria-hidden>
-    <path d="M5 10.5l3 3 7-7" fill="none" stroke="#1c3b2e" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M5 10.5l3 3 7-7" fill="none" stroke="#2D6A4F" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 );
 const Cross = () => (
   <svg viewBox="0 0 20 20" aria-hidden>
-    <path d="M6 6l8 8M14 6l-8 8" fill="none" stroke="#7a2f2a" strokeWidth="2.4" strokeLinecap="round" />
-  </svg>
-);
-const Avatar = ({ color }: { color: string }) => (
-  <svg className="avatar" viewBox="0 0 32 32" aria-hidden>
-    <circle cx="16" cy="16" r="15" fill={color} stroke="#2b2b2b" strokeWidth={1.2} />
-    <circle cx="16" cy="13" r="5" fill="#2b2b2b" />
-    <path d="M5 27 c 4 -8 18 -8 22 0" fill="#2b2b2b" />
+    <path d="M6 6l8 8M14 6l-8 8" fill="none" stroke="#E07A5F" strokeWidth="2.4" strokeLinecap="round" />
   </svg>
 );
 
@@ -56,7 +49,6 @@ export function Tracker() {
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [habitDraft, setHabitDraft] = useState('');
 
-  // Today is stable for the lifetime of the page view.
   const today = useMemo(() => {
     const d = new Date();
     d.setHours(0, 0, 0, 0);
@@ -64,7 +56,6 @@ export function Tracker() {
   }, []);
   const todayKey = toKey(today);
 
-  // Hydrate from localStorage after mount (avoids SSR/CSR mismatch).
   useEffect(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
@@ -77,20 +68,14 @@ export function Tracker() {
         setState(next);
         setHabitDraft(next.habit === DEFAULT_HABIT ? '' : next.habit);
       }
-    } catch {
-      /* ignore */
-    }
+    } catch { /* ignore */ }
     setHydrated(true);
   }, []);
 
-  // Persist on change, but only after hydration.
   useEffect(() => {
     if (!hydrated) return;
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    } catch {
-      /* ignore */
-    }
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+    catch { /* ignore */ }
   }, [state, hydrated]);
 
   const flashToast = useCallback((msg: string) => {
@@ -104,12 +89,10 @@ export function Tracker() {
       const next = { ...prev, answers: { ...prev.answers } };
       if (next.answers[todayKey] === answer) {
         delete next.answers[todayKey];
-        flashToast('Cleared today\u2019s check-in.');
+        flashToast('Cleared.');
       } else {
         next.answers[todayKey] = answer;
-        flashToast(
-          answer === 'yes' ? 'Nice — logged for today.' : 'Logged as no. Tomorrow\u2019s a new day.'
-        );
+        flashToast(answer === 'yes' ? 'Logged. Keep it going.' : 'Logged. Tomorrow is a new day.');
       }
       return next;
     });
@@ -121,7 +104,6 @@ export function Tracker() {
     flashToast('Habit saved.');
   };
 
-  // Derived values.
   const question = useMemo(() => {
     const label = state.habit?.trim() || DEFAULT_HABIT;
     return label.endsWith('?') ? label : `${label} today?`;
@@ -146,11 +128,8 @@ export function Tracker() {
   }, [state.answers, today]);
 
   const best = useMemo(() => {
-    const keys = Object.keys(state.answers)
-      .filter((k) => state.answers[k] === 'yes')
-      .sort();
-    let b = 0;
-    let run = 0;
+    const keys = Object.keys(state.answers).filter((k) => state.answers[k] === 'yes').sort();
+    let b = 0, run = 0;
     let prev: Date | null = null;
     for (const k of keys) {
       const d = new Date(k);
@@ -169,124 +148,108 @@ export function Tracker() {
 
   const todayAnswer: Answer | undefined = state.answers[todayKey];
 
-  const fmtDate = today
-    .toLocaleDateString(undefined, {
-      weekday: 'long',
-      month: 'long',
-      day: 'numeric',
-      year: 'numeric',
-    })
-    .toUpperCase();
+  const fmtDate = today.toLocaleDateString(undefined, {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+  });
 
   return (
-    <div className="app-shell">
-      <div className="app-card">
-        <div className="app-top">
-          <Link href="/">&larr; HOME</Link>
-          <span className="brand-mark" style={{ fontSize: 12 }}>
-            SIMPLY ACCOUNTABLE.
-          </span>
-        </div>
+    <div className="tracker-page">
+      <nav className="tracker-nav">
+        <Link href="/">Home</Link>
+        <span className="tracker-brand">Count on Me</span>
+      </nav>
 
-        <p className="app-date">{fmtDate}</p>
-        <h1 className="app-question">{question}</h1>
+      <p className="tracker-date">{fmtDate}</p>
+      <h1 className="tracker-question">{question}</h1>
 
-        <div className="answer-row" role="group" aria-label="Today's answer">
-          <button
-            className={`answer yes${todayAnswer === 'yes' ? ' active' : ''}`}
-            type="button"
-            onClick={() => onAnswer('yes')}
-          >
-            YES
-          </button>
-          <button
-            className={`answer no${todayAnswer === 'no' ? ' active' : ''}`}
-            type="button"
-            onClick={() => onAnswer('no')}
-          >
-            NO
-          </button>
-        </div>
+      <div className="answer-row" role="group" aria-label="Today's answer">
+        <button
+          className={`answer-btn yes${todayAnswer === 'yes' ? ' active' : ''}`}
+          type="button"
+          onClick={() => onAnswer('yes')}
+        >
+          Yes
+        </button>
+        <button
+          className={`answer-btn no${todayAnswer === 'no' ? ' active' : ''}`}
+          type="button"
+          onClick={() => onAnswer('no')}
+        >
+          No
+        </button>
+      </div>
 
-        <div className="habit-edit">
-          <input
-            type="text"
-            maxLength={64}
-            placeholder="Your habit (e.g. Workout, Read 10 pages)"
-            aria-label="Habit"
-            value={habitDraft}
-            onChange={(e) => setHabitDraft(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                saveHabit();
-              }
-            }}
-          />
-          <button className="btn-ghost" type="button" onClick={saveHabit}>
-            SAVE HABIT
-          </button>
-        </div>
+      <div className="habit-edit">
+        <input
+          type="text"
+          maxLength={64}
+          placeholder="Your habit (e.g. Workout, Read 10 pages)"
+          aria-label="Habit"
+          value={habitDraft}
+          onChange={(e) => setHabitDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') { e.preventDefault(); saveHabit(); }
+          }}
+        />
+        <button type="button" onClick={saveHabit}>Save</button>
+      </div>
 
-        <h2 className="app-section-title">THIS WEEK</h2>
-        <div className="week-grid" aria-label="This week's check-ins">
-          {weekDays.map(({ d, key, wd }) => {
-            const ans = state.answers[key];
-            const cls =
-              'week-cell' +
-              (key === todayKey ? ' today' : '') +
-              (ans === 'yes' ? ' yes' : ans === 'no' ? ' no' : '');
-            return (
-              <div key={key} className={cls}>
-                <div className="wd">{wd}</div>
-                <div className="md">{d.getDate()}</div>
-                <div className="mark">{ans === 'yes' ? <Check /> : ans === 'no' ? <Cross /> : null}</div>
-              </div>
-            );
-          })}
-        </div>
-
-        <h2 className="app-section-title">STATS</h2>
-        <div className="stats">
-          <div className="stat">
-            <div className="label">CURRENT STREAK</div>
-            <div className="value">{streak}</div>
-          </div>
-          <div className="stat">
-            <div className="label">BEST STREAK</div>
-            <div className="value">{best}</div>
-          </div>
-          <div className="stat">
-            <div className="label">TOTAL YES</div>
-            <div className="value">{totalYes}</div>
-          </div>
-        </div>
-
-        <h2 className="app-section-title">FRIENDS</h2>
-        <div className="friends">
-          {FRIENDS.map((f) => (
-            <div className="friend" key={f.name}>
-              <Avatar color={f.color} />
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div className="name">{f.name}</div>
-                <div className="sub">{f.streak}-day streak</div>
-                <div className="friend-actions">
-                  <button type="button" onClick={() => flashToast(`Nudged ${f.name}.`)}>
-                    NUDGE
-                  </button>
-                  <button type="button" onClick={() => flashToast(`Cheered ${f.name}.`)}>
-                    CHEER
-                  </button>
-                </div>
+      <h2 className="tracker-section-title">This week</h2>
+      <div className="week-grid" aria-label="This week's check-ins">
+        {weekDays.map(({ d, key, wd }) => {
+          const ans = state.answers[key];
+          const cls = 'week-cell' +
+            (key === todayKey ? ' today' : '') +
+            (ans === 'yes' ? ' yes' : ans === 'no' ? ' no' : '');
+          return (
+            <div key={key} className={cls}>
+              <div className="wd">{wd}</div>
+              <div className="md">{d.getDate()}</div>
+              <div className="mark">
+                {ans === 'yes' ? <Check /> : ans === 'no' ? <Cross /> : null}
               </div>
             </div>
-          ))}
+          );
+        })}
+      </div>
+
+      <h2 className="tracker-section-title">Stats</h2>
+      <div className="stats">
+        <div className="stat">
+          <div className="label">Current streak</div>
+          <div className="value">{streak}</div>
+        </div>
+        <div className="stat">
+          <div className="label">Best streak</div>
+          <div className="value">{best}</div>
+        </div>
+        <div className="stat">
+          <div className="label">Total yes</div>
+          <div className="value">{totalYes}</div>
         </div>
       </div>
 
-      <div className={`toast${toast ? ' show' : ''}`} role="status" aria-live="polite">
-        {toast}
+      <h2 className="tracker-section-title">Friends</h2>
+      <div className="friends">
+        {FRIENDS.map((f) => (
+          <div className="friend" key={f.name}>
+            <div className="avatar" style={{ background: f.color }}>{f.initial}</div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div className="name">{f.name}</div>
+              <div className="sub">{f.streak > 0 ? `${f.streak}-day streak` : 'No streak yet'}</div>
+              <div className="friend-actions">
+                <button type="button" onClick={() => flashToast(`Nudged ${f.name}.`)}>Nudge</button>
+                <button type="button" onClick={() => flashToast(`Cheered ${f.name}!`)}>Cheer</button>
+              </div>
+            </div>
+          </div>
+        ))}
       </div>
+
+      <div className={`toast${toast ? ' show' : ''}`} role="status" aria-live="polite">{toast}</div>
     </div>
   );
 }
