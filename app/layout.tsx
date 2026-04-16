@@ -32,7 +32,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           rel="stylesheet"
         />
       </head>
-      <body className="min-h-screen pb-32 overflow-x-hidden">{children}</body>
+      <body className="min-h-screen pb-32 overflow-x-hidden bg-surface">
+        <div className="max-w-[430px] mx-auto relative min-h-screen bg-surface shadow-[0_0_80px_rgba(0,0,0,0.06)]">
+          {children}
+        </div>
+      </body>
     </html>
   );
 }

@@ -141,7 +141,7 @@ export default function Feed() {
       </main>
 
       {/* FAB */}
-      <button className="fixed right-6 bottom-32 w-16 h-16 bg-primary text-white organic-blob-1 shadow-[0_12px_40px_rgba(182,53,58,0.3)] z-50 flex items-center justify-center hover:scale-110 active:scale-95 transition-all duration-300">
+      <button className="fixed bottom-32 z-50 w-16 h-16 bg-primary text-white organic-blob-1 shadow-[0_12px_40px_rgba(182,53,58,0.3)] flex items-center justify-center hover:scale-110 active:scale-95 transition-all duration-300" style={{ right: 'max(24px, calc(50% - 215px + 24px))' }}>
         <span className="material-symbols-outlined text-3xl">add</span>
       </button>
 
