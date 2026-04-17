@@ -13,6 +13,7 @@ import {
 } from 'firebase/auth';
 import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from './firebase';
+import { browserTimezone } from './firestore';
 
 type AuthCtx = {
   user: User | null;
@@ -54,6 +55,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       streak: 0,
       bestStreak: 0,
       points: 0,
+      timezone: browserTimezone(),
+      reminderEnabled: true,
     });
   };
 
@@ -73,6 +76,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         streak: 0,
         bestStreak: 0,
         points: 0,
+        timezone: browserTimezone(),
+        reminderEnabled: true,
       });
     }
   };

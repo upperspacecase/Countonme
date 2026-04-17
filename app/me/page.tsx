@@ -10,7 +10,8 @@ import {
   updateUserProfile,
   getRecentGratitude,
   getRecentCheckins,
-  toDateKey,
+  todayKey,
+  browserTimezone,
   type UserProfile,
   type CheckinSummary,
 } from '@/lib/firestore';
@@ -25,18 +26,26 @@ type Cell = {
   summary?: CheckinSummary;
 };
 
-function buildGrid(today: Date, checkins: Map<string, CheckinSummary>): Cell[][] {
-  const todayMid = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-  const todayWeekday = todayMid.getDay(); // 0=Sun..6=Sat
+function buildGrid(
+  tz: string | null,
+  checkins: Map<string, CheckinSummary>
+): Cell[][] {
+  // Anchor on today's date key in the user's tz, then walk back via UTC string math
+  // so DST transitions don't shift cells.
+  const todayK = todayKey(tz);
+  const [ty, tm, td] = todayK.split('-').map(Number);
+  const todayUTC = new Date(Date.UTC(ty, tm - 1, td));
+  const todayWeekday = todayUTC.getUTCDay(); // 0=Sun..6=Sat
+
   const rows: Cell[][] = [];
   for (let row = 0; row < GRID_DAYS; row++) {
     const cols: Cell[] = [];
     for (let col = 0; col < GRID_WEEKS; col++) {
       const daysAgo = (GRID_WEEKS - 1 - col) * 7 + (todayWeekday - row);
-      const d = new Date(todayMid);
-      d.setDate(d.getDate() - daysAgo);
+      const d = new Date(todayUTC);
+      d.setUTCDate(d.getUTCDate() - daysAgo);
       const inFuture = daysAgo < 0;
-      const key = toDateKey(d);
+      const key = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
       cols.push({
         dateKey: key,
         date: d,
@@ -88,7 +97,8 @@ export default function Me() {
     load();
   }, [user]);
 
-  const grid = useMemo(() => buildGrid(new Date(), checkins), [checkins]);
+  const tz = profile?.timezone ?? browserTimezone();
+  const grid = useMemo(() => buildGrid(tz, checkins), [tz, checkins]);
 
   const saveHabit = async () => {
     if (!user || !habitDraft.trim()) return;
@@ -259,6 +269,29 @@ export default function Me() {
             </div>
           </section>
         )}
+
+        {/* Settings */}
+        <section className="bg-surface-container-low px-6 py-4 rounded-xl">
+          <label className="flex items-center justify-between gap-4 cursor-pointer">
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Daily reminder</p>
+              <p className="text-sm font-body text-on-surface">
+                Email nudge at 9am {profile?.timezone ? `(${profile.timezone})` : ''}
+              </p>
+            </div>
+            <input
+              type="checkbox"
+              checked={profile?.reminderEnabled !== false}
+              onChange={async (e) => {
+                if (!user) return;
+                const next = e.target.checked;
+                setProfile((p) => (p ? { ...p, reminderEnabled: next } : p));
+                await updateUserProfile(user.uid, { reminderEnabled: next });
+              }}
+              className="w-5 h-5 accent-primary"
+            />
+          </label>
+        </section>
 
         <button
           onClick={handleSignOut}

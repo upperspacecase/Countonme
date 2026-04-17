@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useMemo, useCallback } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { TopNav } from '@/components/shared/TopNav';
@@ -11,8 +11,10 @@ import {
   getCheckin,
   getTodayGratitude,
   getUserProfile,
+  updateUserProfile,
   getTodayFeed,
-  toDateKey,
+  todayKey,
+  browserTimezone,
   type FeedItem,
   type UserProfile,
 } from '@/lib/firestore';
@@ -145,7 +147,7 @@ export default function Home() {
   const [feedItems, setFeedItems] = useState<FeedItem[]>([]);
   const [feedLoading, setFeedLoading] = useState(true);
 
-  const todayKey = useMemo(() => toDateKey(new Date()), []);
+  const tz = profile?.timezone ?? null;
 
   useEffect(() => {
     if (!loading && !user) router.push('/auth');
@@ -154,22 +156,33 @@ export default function Home() {
   useEffect(() => {
     if (!user) return;
     const load = async () => {
-      const [checkin, gratitude, p] = await Promise.all([
-        getCheckin(user.uid, todayKey),
-        getTodayGratitude(user.uid),
-        getUserProfile(user.uid),
+      const p = await getUserProfile(user.uid);
+      // Auto-heal: back-fill timezone + reminder flag for users created before these fields existed.
+      const healed: Partial<UserProfile> = {};
+      if (!p?.timezone) healed.timezone = browserTimezone();
+      if (p && p.reminderEnabled === undefined) healed.reminderEnabled = true;
+      if (Object.keys(healed).length) {
+        await updateUserProfile(user.uid, healed);
+      }
+      const merged = p ? { ...p, ...healed } : p;
+      setProfile(merged as UserProfile | null);
+
+      const zone = merged?.timezone ?? null;
+      const key = todayKey(zone);
+      const [checkin, gratitude] = await Promise.all([
+        getCheckin(user.uid, key),
+        getTodayGratitude(user.uid, zone),
       ]);
       if (checkin) setTodayAnswer(checkin.answer);
       if (gratitude) setGratitudeSaved(true);
-      if (p) setProfile(p);
     };
     load();
-  }, [user, todayKey]);
+  }, [user]);
 
   const loadFeed = useCallback(async () => {
     setFeedLoading(true);
     try {
-      const items = await getTodayFeed();
+      const items = await getTodayFeed(tz);
       setFeedItems(items);
     } catch (err) {
       console.error('Failed to load feed', err);
@@ -177,7 +190,7 @@ export default function Home() {
     } finally {
       setFeedLoading(false);
     }
-  }, []);
+  }, [tz]);
 
   useEffect(() => {
     if (!user) return;
@@ -193,6 +206,7 @@ export default function Home() {
         habit: profile?.habit || 'Show up today',
         photoURL: user.photoURL ?? null,
         bestStreak: profile?.bestStreak || 0,
+        timezone: tz,
       });
       setTodayAnswer(answer);
       setProfile((prev) =>
@@ -223,7 +237,7 @@ export default function Home() {
     if (!user || !gratitudeText.trim()) return;
     setSavingGratitude(true);
     try {
-      await saveGratitude(user.uid, gratitudeText.trim());
+      await saveGratitude(user.uid, gratitudeText.trim(), tz);
       setGratitudeSaved(true);
       setShowGratitude(false);
       setGratitudeText('');

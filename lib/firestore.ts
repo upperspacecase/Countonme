@@ -19,14 +19,42 @@ import { db } from './firebase';
 // --------------- Date helpers ---------------
 
 const pad = (n: number) => String(n).padStart(2, '0');
+
+// Legacy helper (device-local). Prefer toDateKeyInZone when a user tz is known.
 export const toDateKey = (d: Date) =>
   `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 
+export function toDateKeyInZone(d: Date, tz?: string | null): string {
+  if (!tz) return toDateKey(d);
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: tz,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(d);
+  const map: Record<string, string> = {};
+  for (const p of parts) if (p.type !== 'literal') map[p.type] = p.value;
+  return `${map.year}-${map.month}-${map.day}`;
+}
+
+export function todayKey(tz?: string | null): string {
+  return toDateKeyInZone(new Date(), tz);
+}
+
+export function browserTimezone(): string {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+  } catch {
+    return 'UTC';
+  }
+}
+
 function prevDateKey(key: string): string {
+  // Pure string math via UTC so DST transitions and device tz can't shift us.
   const [y, m, d] = key.split('-').map(Number);
-  const date = new Date(y, m - 1, d);
-  date.setDate(date.getDate() - 1);
-  return toDateKey(date);
+  const date = new Date(Date.UTC(y, m - 1, d));
+  date.setUTCDate(date.getUTCDate() - 1);
+  return `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())}`;
 }
 
 // --------------- Check-ins ---------------
@@ -113,6 +141,7 @@ export type CheckinInput = {
   habit: string;
   photoURL: string | null;
   bestStreak: number;
+  timezone?: string | null;
 };
 
 export type CheckinResult = {
@@ -128,7 +157,7 @@ export async function checkIn(
   answer: 'yes' | 'no',
   profile: CheckinInput
 ): Promise<CheckinResult> {
-  const today = toDateKey(new Date());
+  const today = todayKey(profile.timezone);
   const checkinRef = doc(db, 'users', uid, 'checkins', today);
 
   const existingSnap = await getDoc(checkinRef);
@@ -175,6 +204,9 @@ export type UserProfile = {
   points: number;
   habit?: string;
   photoURL?: string | null;
+  timezone?: string;
+  reminderEnabled?: boolean;
+  lastReminderSentOn?: string;
   createdAt?: Timestamp;
 };
 
@@ -189,8 +221,8 @@ export async function updateUserProfile(uid: string, data: Partial<UserProfile>)
 
 // --------------- Gratitude ---------------
 
-export async function saveGratitude(uid: string, text: string) {
-  const id = toDateKey(new Date());
+export async function saveGratitude(uid: string, text: string, tz?: string | null) {
+  const id = todayKey(tz);
   await setDoc(doc(db, 'users', uid, 'gratitude', id), {
     text,
     timestamp: serverTimestamp(),
@@ -207,8 +239,8 @@ export async function getRecentGratitude(uid: string, count = 7) {
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 }
 
-export async function getTodayGratitude(uid: string) {
-  const today = toDateKey(new Date());
+export async function getTodayGratitude(uid: string, tz?: string | null) {
+  const today = todayKey(tz);
   const snap = await getDoc(doc(db, 'users', uid, 'gratitude', today));
   return snap.exists() ? (snap.data() as { text: string }) : null;
 }
@@ -228,8 +260,11 @@ export type FeedItem = {
 
 const FEED_LIMIT = 50;
 
-export async function getTodayFeed(maxItems = FEED_LIMIT): Promise<FeedItem[]> {
-  const today = toDateKey(new Date());
+export async function getTodayFeed(
+  tz?: string | null,
+  maxItems = FEED_LIMIT
+): Promise<FeedItem[]> {
+  const today = todayKey(tz);
   const q = query(
     collectionGroup(db, 'checkins'),
     where('date', '==', today),
