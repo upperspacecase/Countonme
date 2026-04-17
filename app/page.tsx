@@ -26,6 +26,15 @@ const CARD_STYLES = [
 
 const CARD_OFFSETS = ['', 'mt-[-2rem] ml-4', 'mt-[-1.5rem] mr-6', 'mt-[-1rem]'];
 
+function relativeTime(d: Date | null): string {
+  if (!d) return 'Today';
+  const diffSec = Math.max(0, Math.floor((Date.now() - d.getTime()) / 1000));
+  if (diffSec < 60) return 'Just now';
+  if (diffSec < 3600) return `${Math.floor(diffSec / 60)}m ago`;
+  if (diffSec < 86400) return `${Math.floor(diffSec / 3600)}h ago`;
+  return 'Today';
+}
+
 function FeedCard({ item, index, isOwn }: { item: FeedItem; index: number; isOwn: boolean }) {
   const [flipped, setFlipped] = useState(false);
   const style = CARD_STYLES[index % CARD_STYLES.length];
@@ -61,7 +70,7 @@ function FeedCard({ item, index, isOwn }: { item: FeedItem; index: number; isOwn
               </div>
               <div>
                 <h4 className={`font-bold ${style.text}`}>{isOwn ? 'You' : item.displayName}</h4>
-                <p className="text-sm opacity-80">Today</p>
+                <p className="text-sm opacity-80">{relativeTime(item.checkedInAt)}</p>
               </div>
             </div>
             <div className="bg-background/40 backdrop-blur-sm rounded-lg p-5 mb-4">

@@ -1,40 +1,70 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { TopNav } from '@/components/shared/TopNav';
 import { BottomNav } from '@/components/shared/BottomNav';
-import { getUserProfile, updateUserProfile, getRecentGratitude, type UserProfile } from '@/lib/firestore';
+import {
+  getUserProfile,
+  updateUserProfile,
+  getRecentGratitude,
+  getRecentCheckins,
+  toDateKey,
+  type UserProfile,
+  type CheckinSummary,
+} from '@/lib/firestore';
 
-// Static activity grid colors (will be replaced with real data later)
-const VITALITY_CELLS = [
-  'bg-on-secondary-container','bg-secondary','bg-surface-variant','bg-secondary-container','bg-secondary','bg-on-secondary-container','bg-secondary',
-  'bg-secondary','bg-on-secondary-container','bg-secondary-container','bg-secondary','bg-on-secondary-container','bg-secondary','bg-secondary-container',
-  'bg-surface-variant','bg-secondary-container','bg-secondary','bg-secondary','bg-on-secondary-container','bg-secondary','bg-secondary-container','bg-surface-variant',
-  'bg-secondary','bg-on-secondary-container','bg-secondary','bg-secondary-container','bg-surface-variant','bg-secondary','bg-secondary-container','bg-on-secondary-container',
-  'bg-on-secondary-container','bg-secondary','bg-secondary-container','bg-secondary','bg-on-secondary-container','bg-surface-variant','bg-secondary-container','bg-secondary',
-  'bg-secondary-container','bg-surface-variant','bg-secondary','bg-on-secondary-container','bg-secondary','bg-secondary-container','bg-on-secondary-container','bg-secondary',
-  'bg-secondary','bg-on-secondary-container','bg-secondary-container','bg-surface-variant','bg-secondary','bg-on-secondary-container','bg-secondary','bg-secondary-container',
-  'bg-on-secondary-container','bg-secondary','bg-secondary-container','bg-secondary','bg-on-secondary-container','bg-surface-variant','bg-secondary-container','bg-secondary',
-  'bg-secondary-container','bg-surface-variant','bg-secondary','bg-on-secondary-container','bg-secondary','bg-secondary-container','bg-on-secondary-container','bg-secondary',
-  'bg-secondary','bg-on-secondary-container','bg-secondary-container','bg-surface-variant','bg-secondary','bg-on-secondary-container','bg-secondary','bg-secondary-container',
-  'bg-on-secondary-container','bg-secondary','bg-secondary-container','bg-secondary','bg-on-secondary-container','bg-surface-variant','bg-secondary-container','bg-secondary',
-  'bg-secondary-container','bg-surface-variant','bg-secondary','bg-on-secondary-container','bg-secondary','bg-secondary-container','bg-on-secondary-container','bg-secondary',
-  'bg-secondary','bg-on-secondary-container','bg-secondary-container','bg-surface-variant','bg-secondary','bg-on-secondary-container','bg-secondary','bg-secondary-container',
-  'bg-on-secondary-container','bg-secondary','bg-secondary-container','bg-secondary','bg-on-secondary-container','bg-surface-variant','bg-secondary-container','bg-secondary',
-  'bg-secondary-container','bg-surface-variant','bg-secondary','bg-on-secondary-container','bg-secondary','bg-secondary-container','bg-on-secondary-container','bg-secondary',
-  'bg-secondary','bg-on-secondary-container','bg-secondary-container','bg-surface-variant','bg-secondary','bg-on-secondary-container','bg-secondary','bg-secondary-container',
-  'bg-on-secondary-container','bg-secondary','bg-secondary-container','bg-secondary','bg-on-secondary-container','bg-surface-variant','bg-secondary-container','bg-secondary',
-  'bg-secondary-container','bg-surface-variant','bg-secondary','bg-on-secondary-container','bg-secondary','bg-secondary-container','bg-on-secondary-container','bg-secondary',
-  'bg-secondary','bg-on-secondary-container','bg-secondary-container','bg-surface-variant','bg-secondary','bg-on-secondary-container','bg-secondary','bg-secondary-container',
-];
+const GRID_WEEKS = 22;
+const GRID_DAYS = 7; // Sun..Sat
+
+type Cell = {
+  dateKey: string;
+  date: Date;
+  inFuture: boolean;
+  summary?: CheckinSummary;
+};
+
+function buildGrid(today: Date, checkins: Map<string, CheckinSummary>): Cell[][] {
+  const todayMid = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const todayWeekday = todayMid.getDay(); // 0=Sun..6=Sat
+  const rows: Cell[][] = [];
+  for (let row = 0; row < GRID_DAYS; row++) {
+    const cols: Cell[] = [];
+    for (let col = 0; col < GRID_WEEKS; col++) {
+      const daysAgo = (GRID_WEEKS - 1 - col) * 7 + (todayWeekday - row);
+      const d = new Date(todayMid);
+      d.setDate(d.getDate() - daysAgo);
+      const inFuture = daysAgo < 0;
+      const key = toDateKey(d);
+      cols.push({
+        dateKey: key,
+        date: d,
+        inFuture,
+        summary: inFuture ? undefined : checkins.get(key),
+      });
+    }
+    rows.push(cols);
+  }
+  return rows;
+}
+
+function cellClass(cell: Cell): string {
+  if (cell.inFuture) return 'bg-surface-variant/20';
+  if (!cell.summary) return 'bg-surface-variant';
+  if (cell.summary.answer !== 'yes') return 'bg-surface-variant';
+  const s = cell.summary.streak;
+  if (s >= 11) return 'bg-on-secondary-container';
+  if (s >= 4) return 'bg-secondary';
+  return 'bg-secondary-container';
+}
 
 export default function Me() {
   const { user, loading, signOut } = useAuth();
   const router = useRouter();
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [gratitude, setGratitude] = useState<any[]>([]);
+  const [gratitude, setGratitude] = useState<{ id: string; text: string }[]>([]);
+  const [checkins, setCheckins] = useState<Map<string, CheckinSummary>>(new Map());
   const [editingHabit, setEditingHabit] = useState(false);
   const [habitDraft, setHabitDraft] = useState('');
 
@@ -45,19 +75,25 @@ export default function Me() {
   useEffect(() => {
     if (!user) return;
     const load = async () => {
-      const p = await getUserProfile(user.uid);
+      const [p, g, c] = await Promise.all([
+        getUserProfile(user.uid),
+        getRecentGratitude(user.uid, 5),
+        getRecentCheckins(user.uid, GRID_WEEKS * GRID_DAYS + 30),
+      ]);
       setProfile(p);
       if (p?.habit) setHabitDraft(p.habit);
-      const g = await getRecentGratitude(user.uid, 5);
-      setGratitude(g);
+      setGratitude(g as { id: string; text: string }[]);
+      setCheckins(c);
     };
     load();
   }, [user]);
 
+  const grid = useMemo(() => buildGrid(new Date(), checkins), [checkins]);
+
   const saveHabit = async () => {
     if (!user || !habitDraft.trim()) return;
     await updateUserProfile(user.uid, { habit: habitDraft.trim() });
-    setProfile((p) => p ? { ...p, habit: habitDraft.trim() } : p);
+    setProfile((p) => (p ? { ...p, habit: habitDraft.trim() } : p));
     setEditingHabit(false);
   };
 
@@ -134,7 +170,6 @@ export default function Me() {
 
         {/* Stats Bento */}
         <section className="grid grid-cols-3 gap-3">
-          {/* Streak */}
           <div className="col-span-1 bg-primary text-on-primary p-5 rounded-xl relative overflow-hidden">
             <div className="absolute -right-6 -top-6 w-20 h-20 bg-primary-container/20 rounded-full blur-2xl" />
             <div className="relative z-10">
@@ -146,7 +181,6 @@ export default function Me() {
             </div>
           </div>
 
-          {/* Best + Points */}
           <div className="col-span-2 grid grid-rows-2 gap-3">
             <div className="bg-surface-container p-4 rounded-lg flex justify-between items-center">
               <div>
@@ -174,7 +208,7 @@ export default function Me() {
           <div className="flex justify-between items-end">
             <div>
               <h3 className="headline-serif text-xl italic">Habit Vitality</h3>
-              <p className="text-on-surface-variant text-xs">A visual echo of your consistency</p>
+              <p className="text-on-surface-variant text-xs">Last 22 weeks</p>
             </div>
             <div className="flex gap-1 items-center text-[10px] font-bold uppercase text-on-surface-variant">
               <span>Less</span>
@@ -185,9 +219,17 @@ export default function Me() {
               <span>More</span>
             </div>
           </div>
-          <div className="habit-grid">
-            {VITALITY_CELLS.map((color, i) => (
-              <div key={i} className={`habit-cell ${color}`} />
+          <div className="space-y-1">
+            {grid.map((row, rowIdx) => (
+              <div key={rowIdx} className="habit-grid">
+                {row.map((cell) => (
+                  <div
+                    key={cell.dateKey}
+                    className={`habit-cell ${cellClass(cell)}`}
+                    title={`${cell.dateKey}${cell.summary ? ` — ${cell.summary.answer}` : ''}`}
+                  />
+                ))}
+              </div>
             ))}
           </div>
         </section>
@@ -218,7 +260,6 @@ export default function Me() {
           </section>
         )}
 
-        {/* Sign Out */}
         <button
           onClick={handleSignOut}
           className="w-full py-3 text-center text-sm font-body font-semibold text-primary/60 hover:text-primary transition-colors"

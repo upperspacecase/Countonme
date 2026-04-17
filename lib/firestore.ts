@@ -46,6 +46,31 @@ export async function getCheckin(uid: string, date: string) {
   return snap.exists() ? (snap.data() as Checkin) : null;
 }
 
+export type CheckinSummary = { answer: 'yes' | 'no'; streak: number };
+
+export async function getRecentCheckins(
+  uid: string,
+  maxDocs = 180
+): Promise<Map<string, CheckinSummary>> {
+  const map = new Map<string, CheckinSummary>();
+  try {
+    const q = query(
+      collection(db, 'users', uid, 'checkins'),
+      orderBy('date', 'desc'),
+      limit(maxDocs)
+    );
+    const snap = await getDocs(q);
+    for (const d of snap.docs) {
+      const data = d.data() as { date?: string; answer: 'yes' | 'no'; streak?: number };
+      const key = data.date ?? d.id;
+      map.set(key, { answer: data.answer, streak: data.streak ?? 0 });
+    }
+  } catch (err) {
+    console.error('getRecentCheckins failed', err);
+  }
+  return map;
+}
+
 export async function getWeekCheckins(uid: string, dates: string[]) {
   const results: Record<string, 'yes' | 'no'> = {};
   await Promise.all(
@@ -197,6 +222,7 @@ export type FeedItem = {
   answer: 'yes' | 'no';
   streak: number;
   photoURL: string | null;
+  checkedInAt: Date | null;
   gratitude?: string;
 };
 
@@ -214,7 +240,7 @@ export async function getTodayFeed(maxItems = FEED_LIMIT): Promise<FeedItem[]> {
 
   return Promise.all(
     snap.docs.map(async (d) => {
-      const data = d.data() as Checkin;
+      const data = d.data() as Checkin & { timestamp?: Timestamp };
       const gratSnap = await getDoc(doc(db, 'users', data.uid, 'gratitude', today));
       const gratitude = gratSnap.exists() ? (gratSnap.data() as { text: string }).text : undefined;
       return {
@@ -224,6 +250,7 @@ export async function getTodayFeed(maxItems = FEED_LIMIT): Promise<FeedItem[]> {
         answer: data.answer,
         streak: data.streak || 0,
         photoURL: data.photoURL ?? null,
+        checkedInAt: data.timestamp ? data.timestamp.toDate() : null,
         gratitude,
       };
     })
