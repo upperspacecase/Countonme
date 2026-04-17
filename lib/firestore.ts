@@ -5,7 +5,9 @@ import {
   getDocs,
   updateDoc,
   collection,
+  collectionGroup,
   query,
+  where,
   orderBy,
   limit,
   serverTimestamp,
@@ -14,22 +16,34 @@ import {
 } from 'firebase/firestore';
 import { db } from './firebase';
 
-// --------------- Check-ins ---------------
+// --------------- Date helpers ---------------
 
 const pad = (n: number) => String(n).padStart(2, '0');
 export const toDateKey = (d: Date) =>
   `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 
-export async function saveCheckin(uid: string, date: string, answer: 'yes' | 'no') {
-  await setDoc(doc(db, 'users', uid, 'checkins', date), {
-    answer,
-    timestamp: serverTimestamp(),
-  });
+function prevDateKey(key: string): string {
+  const [y, m, d] = key.split('-').map(Number);
+  const date = new Date(y, m - 1, d);
+  date.setDate(date.getDate() - 1);
+  return toDateKey(date);
 }
+
+// --------------- Check-ins ---------------
+
+export type Checkin = {
+  uid: string;
+  answer: 'yes' | 'no';
+  date: string;
+  displayName: string;
+  habit: string;
+  streak: number;
+  photoURL: string | null;
+};
 
 export async function getCheckin(uid: string, date: string) {
   const snap = await getDoc(doc(db, 'users', uid, 'checkins', date));
-  return snap.exists() ? (snap.data() as { answer: 'yes' | 'no' }) : null;
+  return snap.exists() ? (snap.data() as Checkin) : null;
 }
 
 export async function getWeekCheckins(uid: string, dates: string[]) {
@@ -45,6 +59,87 @@ export async function getWeekCheckins(uid: string, dates: string[]) {
   return results;
 }
 
+async function computeStreakEndingBefore(uid: string, dateKey: string): Promise<number> {
+  const q = query(
+    collection(db, 'users', uid, 'checkins'),
+    orderBy('date', 'desc'),
+    limit(365)
+  );
+  const snap = await getDocs(q);
+
+  let expected = prevDateKey(dateKey);
+  let streak = 0;
+
+  for (const d of snap.docs) {
+    const data = d.data() as { date?: string; answer: 'yes' | 'no' };
+    const docDate = data.date ?? d.id;
+    if (docDate >= dateKey) continue;
+    if (docDate !== expected) break;
+    if (data.answer !== 'yes') break;
+    streak++;
+    expected = prevDateKey(expected);
+  }
+
+  return streak;
+}
+
+export type CheckinInput = {
+  displayName: string;
+  habit: string;
+  photoURL: string | null;
+  bestStreak: number;
+};
+
+export type CheckinResult = {
+  streak: number;
+  bestStreak: number;
+  pointsAwarded: number;
+};
+
+// Atomic-ish check-in: writes today's doc with denormalized profile fields,
+// recomputes streak from history, updates user doc. Idempotent on re-tap.
+export async function checkIn(
+  uid: string,
+  answer: 'yes' | 'no',
+  profile: CheckinInput
+): Promise<CheckinResult> {
+  const today = toDateKey(new Date());
+  const checkinRef = doc(db, 'users', uid, 'checkins', today);
+
+  const existingSnap = await getDoc(checkinRef);
+  const existing = existingSnap.exists() ? (existingSnap.data() as { answer: 'yes' | 'no' }) : null;
+  const wasYes = existing?.answer === 'yes';
+  const isNewYes = answer === 'yes' && !wasYes;
+
+  let newStreak = 0;
+  if (answer === 'yes') {
+    const streakBefore = await computeStreakEndingBefore(uid, today);
+    newStreak = streakBefore + 1;
+  }
+  const newBest = Math.max(newStreak, profile.bestStreak || 0);
+  const pointsAwarded = isNewYes ? 10 : 0;
+
+  await setDoc(checkinRef, {
+    uid,
+    answer,
+    date: today,
+    displayName: profile.displayName,
+    habit: profile.habit,
+    streak: newStreak,
+    photoURL: profile.photoURL,
+    timestamp: serverTimestamp(),
+  });
+
+  const updates: Record<string, unknown> = {
+    streak: newStreak,
+    bestStreak: newBest,
+  };
+  if (pointsAwarded > 0) updates.points = increment(pointsAwarded);
+  await updateDoc(doc(db, 'users', uid), updates);
+
+  return { streak: newStreak, bestStreak: newBest, pointsAwarded };
+}
+
 // --------------- User Profile ---------------
 
 export type UserProfile = {
@@ -54,6 +149,7 @@ export type UserProfile = {
   bestStreak: number;
   points: number;
   habit?: string;
+  photoURL?: string | null;
   createdAt?: Timestamp;
 };
 
@@ -64,14 +160,6 @@ export async function getUserProfile(uid: string): Promise<UserProfile | null> {
 
 export async function updateUserProfile(uid: string, data: Partial<UserProfile>) {
   await updateDoc(doc(db, 'users', uid), data);
-}
-
-export async function updateStreak(uid: string, currentStreak: number, bestStreak: number) {
-  await updateDoc(doc(db, 'users', uid), {
-    streak: currentStreak,
-    bestStreak,
-    points: increment(currentStreak > 0 ? 10 : 0),
-  });
 }
 
 // --------------- Gratitude ---------------
@@ -108,34 +196,36 @@ export type FeedItem = {
   habit: string;
   answer: 'yes' | 'no';
   streak: number;
+  photoURL: string | null;
   gratitude?: string;
 };
 
-export async function getTodayFeed(): Promise<FeedItem[]> {
+const FEED_LIMIT = 50;
+
+export async function getTodayFeed(maxItems = FEED_LIMIT): Promise<FeedItem[]> {
   const today = toDateKey(new Date());
-  const usersSnap = await getDocs(collection(db, 'users'));
-  const items: FeedItem[] = [];
+  const q = query(
+    collectionGroup(db, 'checkins'),
+    where('date', '==', today),
+    orderBy('timestamp', 'desc'),
+    limit(maxItems)
+  );
+  const snap = await getDocs(q);
 
-  await Promise.all(
-    usersSnap.docs.map(async (userDoc) => {
-      const profile = userDoc.data() as UserProfile;
-      const checkinSnap = await getDoc(doc(db, 'users', userDoc.id, 'checkins', today));
-      if (!checkinSnap.exists()) return;
-
-      const checkin = checkinSnap.data() as { answer: 'yes' | 'no' };
-      const gratSnap = await getDoc(doc(db, 'users', userDoc.id, 'gratitude', today));
+  return Promise.all(
+    snap.docs.map(async (d) => {
+      const data = d.data() as Checkin;
+      const gratSnap = await getDoc(doc(db, 'users', data.uid, 'gratitude', today));
       const gratitude = gratSnap.exists() ? (gratSnap.data() as { text: string }).text : undefined;
-
-      items.push({
-        uid: userDoc.id,
-        displayName: profile.displayName || 'Someone',
-        habit: profile.habit || 'Showed up today',
-        answer: checkin.answer,
-        streak: profile.streak || 0,
+      return {
+        uid: data.uid,
+        displayName: data.displayName || 'Someone',
+        habit: data.habit || 'Showed up today',
+        answer: data.answer,
+        streak: data.streak || 0,
+        photoURL: data.photoURL ?? null,
         gratitude,
-      });
+      };
     })
   );
-
-  return items;
 }

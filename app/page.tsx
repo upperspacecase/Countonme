@@ -6,15 +6,15 @@ import { useAuth } from '@/lib/auth-context';
 import { TopNav } from '@/components/shared/TopNav';
 import { BottomNav } from '@/components/shared/BottomNav';
 import {
-  saveCheckin,
+  checkIn,
   saveGratitude,
   getCheckin,
   getTodayGratitude,
   getUserProfile,
-  updateStreak,
   getTodayFeed,
   toDateKey,
   type FeedItem,
+  type UserProfile,
 } from '@/lib/firestore';
 
 const CARD_STYLES = [
@@ -52,8 +52,12 @@ function FeedCard({ item, index, isOwn }: { item: FeedItem; index: number; isOwn
             style={{ backfaceVisibility: 'hidden' }}
           >
             <div className="flex items-center gap-4 mb-4">
-              <div className="w-12 h-12 rounded-full bg-surface-container-lowest border-2 border-background flex items-center justify-center text-base font-bold text-on-surface">
-                {item.displayName[0]}
+              <div className="w-12 h-12 rounded-full bg-surface-container-lowest border-2 border-background flex items-center justify-center text-base font-bold text-on-surface overflow-hidden">
+                {item.photoURL ? (
+                  <img src={item.photoURL} alt={item.displayName} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                ) : (
+                  item.displayName[0]
+                )}
               </div>
               <div>
                 <h4 className={`font-bold ${style.text}`}>{isOwn ? 'You' : item.displayName}</h4>
@@ -122,14 +126,15 @@ export default function Home() {
   const { user, loading } = useAuth();
   const router = useRouter();
 
+  const [profile, setProfile] = useState<UserProfile | null>(null);
   const [todayAnswer, setTodayAnswer] = useState<'yes' | 'no' | null>(null);
   const [showGratitude, setShowGratitude] = useState(false);
   const [gratitudeText, setGratitudeText] = useState('');
   const [gratitudeSaved, setGratitudeSaved] = useState(false);
   const [savingGratitude, setSavingGratitude] = useState(false);
+  const [checkingIn, setCheckingIn] = useState(false);
   const [feedItems, setFeedItems] = useState<FeedItem[]>([]);
   const [feedLoading, setFeedLoading] = useState(true);
-  const [habit, setHabit] = useState('Show up today');
 
   const todayKey = useMemo(() => toDateKey(new Date()), []);
 
@@ -140,23 +145,29 @@ export default function Home() {
   useEffect(() => {
     if (!user) return;
     const load = async () => {
-      const [checkin, gratitude, profile] = await Promise.all([
+      const [checkin, gratitude, p] = await Promise.all([
         getCheckin(user.uid, todayKey),
         getTodayGratitude(user.uid),
         getUserProfile(user.uid),
       ]);
       if (checkin) setTodayAnswer(checkin.answer);
       if (gratitude) setGratitudeSaved(true);
-      if (profile?.habit) setHabit(profile.habit);
+      if (p) setProfile(p);
     };
     load();
   }, [user, todayKey]);
 
   const loadFeed = useCallback(async () => {
     setFeedLoading(true);
-    const items = await getTodayFeed();
-    setFeedItems(items);
-    setFeedLoading(false);
+    try {
+      const items = await getTodayFeed();
+      setFeedItems(items);
+    } catch (err) {
+      console.error('Failed to load feed', err);
+      setFeedItems([]);
+    } finally {
+      setFeedLoading(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -165,27 +176,60 @@ export default function Home() {
   }, [user, loadFeed]);
 
   const handleAnswer = async (answer: 'yes' | 'no') => {
-    if (!user) return;
-    setTodayAnswer(answer);
-    await saveCheckin(user.uid, todayKey, answer);
-
-    const profile = await getUserProfile(user.uid);
-    const newStreak = answer === 'yes' ? (profile?.streak || 0) + 1 : 0;
-    const best = Math.max(newStreak, profile?.bestStreak || 0);
-    await updateStreak(user.uid, newStreak, best);
-
-    setTimeout(() => setShowGratitude(true), 500);
+    if (!user || checkingIn) return;
+    setCheckingIn(true);
+    try {
+      const result = await checkIn(user.uid, answer, {
+        displayName: profile?.displayName || user.displayName || 'Someone',
+        habit: profile?.habit || 'Show up today',
+        photoURL: user.photoURL ?? null,
+        bestStreak: profile?.bestStreak || 0,
+      });
+      setTodayAnswer(answer);
+      setProfile((prev) =>
+        prev
+          ? {
+              ...prev,
+              streak: result.streak,
+              bestStreak: result.bestStreak,
+              points: (prev.points || 0) + result.pointsAwarded,
+            }
+          : prev
+      );
+      if (answer === 'yes' && !gratitudeSaved) {
+        setTimeout(() => setShowGratitude(true), 500);
+      } else {
+        setShowGratitude(false);
+      }
+      loadFeed();
+    } catch (err) {
+      console.error('Check-in failed', err);
+      alert('Could not save your check-in. Try again?');
+    } finally {
+      setCheckingIn(false);
+    }
   };
 
   const handleSaveGratitude = async () => {
     if (!user || !gratitudeText.trim()) return;
     setSavingGratitude(true);
-    await saveGratitude(user.uid, gratitudeText.trim());
-    setGratitudeSaved(true);
-    setSavingGratitude(false);
+    try {
+      await saveGratitude(user.uid, gratitudeText.trim());
+      setGratitudeSaved(true);
+      setShowGratitude(false);
+      setGratitudeText('');
+      loadFeed();
+    } catch (err) {
+      console.error('Gratitude save failed', err);
+      alert('Could not save your gratitude. Try again?');
+    } finally {
+      setSavingGratitude(false);
+    }
+  };
+
+  const handleChangeAnswer = () => {
+    setTodayAnswer(null);
     setShowGratitude(false);
-    setGratitudeText('');
-    loadFeed();
   };
 
   if (loading || !user) {
@@ -197,7 +241,7 @@ export default function Home() {
   }
 
   const needsCheckin = todayAnswer === null;
-  const needsGratitude = showGratitude && !gratitudeSaved;
+  const needsGratitude = showGratitude && !gratitudeSaved && todayAnswer === 'yes';
 
   return (
     <>
@@ -212,19 +256,49 @@ export default function Home() {
               <div className="flex justify-center gap-4">
                 <button
                   onClick={() => handleAnswer('yes')}
-                  className="group flex items-center gap-2 bg-secondary text-on-secondary px-8 py-4 rounded-full font-bold shadow-lg transition-all hover:scale-105 active:scale-95"
+                  disabled={checkingIn}
+                  className="group flex items-center gap-2 bg-secondary text-on-secondary px-8 py-4 rounded-full font-bold shadow-lg transition-all hover:scale-105 active:scale-95 disabled:opacity-60"
                 >
                   <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
-                  <span>Yes</span>
+                  <span>{checkingIn ? 'Saving…' : 'Yes'}</span>
                 </button>
                 <button
                   onClick={() => handleAnswer('no')}
-                  className="group flex items-center gap-2 bg-surface-container-highest text-on-surface-variant px-8 py-4 rounded-full font-semibold transition-all hover:bg-surface-dim active:scale-95"
+                  disabled={checkingIn}
+                  className="group flex items-center gap-2 bg-surface-container-highest text-on-surface-variant px-8 py-4 rounded-full font-semibold transition-all hover:bg-surface-dim active:scale-95 disabled:opacity-60"
                 >
                   <span className="material-symbols-outlined">close</span>
                   <span>Not yet</span>
                 </button>
               </div>
+            </div>
+          </section>
+        )}
+
+        {/* Answered state — shows current answer with option to change */}
+        {!needsCheckin && !needsGratitude && (
+          <section className="mb-10">
+            <div className="bg-surface-container-low px-6 py-4 rounded-xl flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <span
+                  className={`material-symbols-outlined ${todayAnswer === 'yes' ? 'text-secondary' : 'text-on-surface-variant'}`}
+                  style={{ fontVariationSettings: "'FILL' 1" }}
+                >
+                  {todayAnswer === 'yes' ? 'check_circle' : 'schedule'}
+                </span>
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Today</p>
+                  <p className="headline-serif italic text-lg text-on-surface">
+                    {todayAnswer === 'yes' ? 'You showed up' : 'Not yet'}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={handleChangeAnswer}
+                className="text-xs font-bold uppercase tracking-widest text-primary hover:opacity-80"
+              >
+                Change
+              </button>
             </div>
           </section>
         )}
