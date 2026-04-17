@@ -270,29 +270,6 @@ export default function Me() {
           </section>
         )}
 
-        {/* Settings */}
-        <section className="bg-surface-container-low px-6 py-4 rounded-xl">
-          <label className="flex items-center justify-between gap-4 cursor-pointer">
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Daily reminder</p>
-              <p className="text-sm font-body text-on-surface">
-                Email nudge at 9am {profile?.timezone ? `(${profile.timezone})` : ''}
-              </p>
-            </div>
-            <input
-              type="checkbox"
-              checked={profile?.reminderEnabled !== false}
-              onChange={async (e) => {
-                if (!user) return;
-                const next = e.target.checked;
-                setProfile((p) => (p ? { ...p, reminderEnabled: next } : p));
-                await updateUserProfile(user.uid, { reminderEnabled: next });
-              }}
-              className="w-5 h-5 accent-primary"
-            />
-          </label>
-        </section>
-
         <button
           onClick={handleSignOut}
           className="w-full py-3 text-center text-sm font-body font-semibold text-primary/60 hover:text-primary transition-colors"
