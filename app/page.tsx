@@ -17,7 +17,68 @@ import {
   browserTimezone,
   type FeedItem,
   type UserProfile,
+  type WeekStrip,
 } from '@/lib/firestore';
+
+const WEEKDAY_LABELS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+
+function WeekStripRow({ week }: { week: WeekStrip }) {
+  return (
+    <div className="flex justify-between items-start w-full pt-4 pb-2">
+      {week.map((day) => {
+        const isYes = day.status === 'yes';
+        const isNo = day.status === 'no';
+        const isFutureOrNone = day.status === 'future' || day.status === 'none';
+        return (
+          <div key={day.dateKey} className="flex flex-col items-center gap-1.5 flex-1">
+            <span
+              className={`text-[10px] font-bold uppercase tracking-widest ${
+                day.isToday ? 'text-on-surface' : 'text-on-surface-variant/60'
+              }`}
+            >
+              {WEEKDAY_LABELS[day.dayIdx]}
+            </span>
+            <div className="relative">
+              <div
+                className={`w-7 h-7 rounded-full flex items-center justify-center transition-colors ${
+                  isYes
+                    ? 'bg-tertiary text-on-tertiary shadow-sm'
+                    : isNo
+                    ? 'bg-surface-container-highest text-on-surface-variant/40'
+                    : 'bg-surface-container-highest/60 text-on-surface-variant/30'
+                } ${day.isToday && !isYes ? 'ring-2 ring-tertiary/60' : ''}`}
+              >
+                {isYes && (
+                  <span
+                    className="material-symbols-outlined text-[16px] leading-none"
+                    style={{ fontVariationSettings: "'FILL' 1, 'wght' 700" }}
+                  >
+                    check
+                  </span>
+                )}
+                {isNo && (
+                  <span className="material-symbols-outlined text-[14px] leading-none opacity-60">
+                    close
+                  </span>
+                )}
+                {isFutureOrNone && !day.isToday && (
+                  <span className="w-1 h-1 rounded-full bg-current opacity-40" />
+                )}
+              </div>
+              {day.isToday && (
+                <span
+                  aria-hidden
+                  className="absolute left-1/2 -translate-x-1/2 -bottom-1 w-2 h-2 rotate-45 bg-tertiary"
+                  style={{ display: isYes ? 'block' : 'none' }}
+                />
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 const CARD_STYLES = [
   { bg: 'bg-primary-container', text: 'text-on-primary-container', blob: 'organic-blob-2', hover: 'hover:-rotate-1' },
@@ -75,25 +136,25 @@ function FeedCard({ item, index, isOwn }: { item: FeedItem; index: number; isOwn
                 <p className="text-sm opacity-80">{relativeTime(item.checkedInAt)}</p>
               </div>
             </div>
-            <div className="bg-background/40 backdrop-blur-sm rounded-lg p-5 mb-4">
+            <div className="bg-background/40 backdrop-blur-sm rounded-lg p-5 mb-2">
               <p className={`headline-serif italic text-2xl ${style.text}`}>
                 &ldquo;{item.habit}&rdquo;
               </p>
             </div>
-            <div className="flex justify-between items-center px-2">
-              <div className={`flex items-center gap-1 ${style.text} opacity-80`}>
-                {item.streak > 0 && (
+
+            <WeekStripRow week={item.week} />
+
+            <div className="flex justify-between items-center px-2 mt-2">
+              <div className={`flex items-center gap-1.5 ${style.text} opacity-90`}>
+                {item.streak > 0 ? (
                   <>
-                    <span className="material-symbols-outlined text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>
+                    <span className="material-symbols-outlined text-base" style={{ fontVariationSettings: "'FILL' 1" }}>
                       local_fire_department
                     </span>
-                    <span className="font-bold">{item.streak} Day Streak</span>
+                    <span className="font-bold text-sm">{item.streak} day streak</span>
                   </>
-                )}
-                {item.answer === 'yes' && (
-                  <span className="material-symbols-outlined text-sm ml-2" style={{ fontVariationSettings: "'FILL' 1" }}>
-                    check_circle
-                  </span>
+                ) : (
+                  <span className="text-sm opacity-70">Streak starts today</span>
                 )}
               </div>
               {hasGratitude && (

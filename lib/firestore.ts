@@ -247,6 +247,14 @@ export async function getTodayGratitude(uid: string, tz?: string | null) {
 
 // --------------- Feed ---------------
 
+export type WeekDayStatus = 'yes' | 'no' | 'future' | 'none';
+export type WeekStrip = {
+  dateKey: string;
+  dayIdx: number; // 0=Sun..6=Sat
+  isToday: boolean;
+  status: WeekDayStatus;
+}[];
+
 export type FeedItem = {
   uid: string;
   displayName: string;
@@ -255,10 +263,60 @@ export type FeedItem = {
   streak: number;
   photoURL: string | null;
   checkedInAt: Date | null;
+  week: WeekStrip;
   gratitude?: string;
 };
 
 const FEED_LIMIT = 50;
+
+function weekdayFromKey(key: string): number {
+  const [y, m, d] = key.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d)).getUTCDay();
+}
+
+function addDaysToKey(key: string, delta: number): string {
+  const [y, m, d] = key.split('-').map(Number);
+  const date = new Date(Date.UTC(y, m - 1, d));
+  date.setUTCDate(date.getUTCDate() + delta);
+  return `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())}`;
+}
+
+function buildWeekStrip(
+  todayKeyStr: string,
+  answers: Map<string, 'yes' | 'no'>
+): WeekStrip {
+  const todayDow = weekdayFromKey(todayKeyStr); // 0=Sun
+  const sundayKey = addDaysToKey(todayKeyStr, -todayDow);
+  const strip: WeekStrip = [];
+  for (let i = 0; i < 7; i++) {
+    const key = addDaysToKey(sundayKey, i);
+    const isToday = key === todayKeyStr;
+    let status: WeekDayStatus;
+    if (key > todayKeyStr) status = 'future';
+    else {
+      const a = answers.get(key);
+      status = a ?? 'none';
+    }
+    strip.push({ dateKey: key, dayIdx: i, isToday, status });
+  }
+  return strip;
+}
+
+async function fetchWeekAnswers(uid: string): Promise<Map<string, 'yes' | 'no'>> {
+  const q = query(
+    collection(db, 'users', uid, 'checkins'),
+    orderBy('date', 'desc'),
+    limit(7)
+  );
+  const snap = await getDocs(q);
+  const map = new Map<string, 'yes' | 'no'>();
+  for (const d of snap.docs) {
+    const data = d.data() as { date?: string; answer: 'yes' | 'no' };
+    const key = data.date ?? d.id;
+    map.set(key, data.answer);
+  }
+  return map;
+}
 
 export async function getTodayFeed(
   tz?: string | null,
@@ -276,7 +334,10 @@ export async function getTodayFeed(
   return Promise.all(
     snap.docs.map(async (d) => {
       const data = d.data() as Checkin & { timestamp?: Timestamp };
-      const gratSnap = await getDoc(doc(db, 'users', data.uid, 'gratitude', today));
+      const [gratSnap, weekAnswers] = await Promise.all([
+        getDoc(doc(db, 'users', data.uid, 'gratitude', today)),
+        fetchWeekAnswers(data.uid),
+      ]);
       const gratitude = gratSnap.exists() ? (gratSnap.data() as { text: string }).text : undefined;
       return {
         uid: data.uid,
@@ -286,6 +347,7 @@ export async function getTodayFeed(
         streak: data.streak || 0,
         photoURL: data.photoURL ?? null,
         checkedInAt: data.timestamp ? data.timestamp.toDate() : null,
+        week: buildWeekStrip(today, weekAnswers),
         gratitude,
       };
     })
